@@ -76,11 +76,12 @@ func TestParseFromYamlDgraph(t *testing.T) {
 			`,
 			want: server.ToolConfigs{
 				"example_tool": dgraph.Config{
-					Name:        "example_tool",
-					Kind:        dgraph.ToolKind,
-					Source:      "my-dgraph-instance",
-					Description: "some tool description",
-					Statement:   "mutation {set { _:a <name> \"a@email.com\" . _:b <email> \"b@email.com\" .}}\n",
+					Name:         "example_tool",
+					Kind:         dgraph.ToolKind,
+					Source:       "my-dgraph-instance",
+					Description:  "some tool description",
+					AuthRequired: []string{"my-google-auth-service", "other-auth-service"},
+					Statement:    "mutation {set { _:a <name> \"a@email.com\" . _:b <email> \"b@email.com\" .}}\n",
 				},
 			},
 		},
