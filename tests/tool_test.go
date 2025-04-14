@@ -31,7 +31,7 @@ import (
 	"cloud.google.com/go/spanner"
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
 	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
-
+	"github.com/googleapis/genai-toolbox/internal/server/mcp"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -151,8 +151,8 @@ func SetupSpannerTable(t *testing.T, ctx context.Context, adminClient *database.
 			SQL:    insert_statement,
 			Params: params,
 		}
-		txn.Update(ctx, stmt)
-		return nil
+		_, err := txn.Update(ctx, stmt)
+		return err
 	})
 	if err != nil {
 		t.Fatalf("unable to insert test data: %s", err)
