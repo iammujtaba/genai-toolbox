@@ -102,12 +102,18 @@ func TestSpannerToolEndpoints(t *testing.T) {
 
 	// set up data for param tool
 	create_statement1, insert_statement1, tool_statement1, params1 := GetSpannerParamToolInfo(tableNameParam)
-	teardownTable1 := SetupSpannerTable(t, ctx, adminClient, dataClient, create_statement1, insert_statement1, tableNameParam, params1)
+	dbString := fmt.Sprintf(
+		"projects/%s/instances/%s/databases/%s",
+		SPANNER_PROJECT,
+		SPANNER_INSTANCE,
+		SPANNER_DATABASE,
+	)
+	teardownTable1 := SetupSpannerTable(t, ctx, adminClient, dataClient, create_statement1, insert_statement1, tableNameParam, dbString, params1)
 	defer teardownTable1(t)
 
 	// set up data for auth tool
 	create_statement2, insert_statement2, tool_statement2, params2 := GetSpannerAuthToolInfo(tableNameAuth)
-	teardownTable2 := SetupSpannerTable(t, ctx, adminClient, dataClient, create_statement2, insert_statement2, tableNameAuth, params2)
+	teardownTable2 := SetupSpannerTable(t, ctx, adminClient, dataClient, create_statement2, insert_statement2, tableNameAuth, dbString, params2)
 	defer teardownTable2(t)
 
 	// Write config into a file and pass it to command

@@ -124,13 +124,7 @@ func SetupMySQLTable(t *testing.T, ctx context.Context, pool *sql.DB, create_sta
 
 // SetupSpannerTable creates and inserts data into a table of tool
 // compatible with spanner-sql tool
-func SetupSpannerTable(t *testing.T, ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, create_statement, insert_statement, tableName string, params map[string]any) func(*testing.T) {
-	dbString := fmt.Sprintf(
-		"projects/%s/instances/%s/databases/%s",
-		SPANNER_PROJECT,
-		SPANNER_INSTANCE,
-		SPANNER_DATABASE,
-	)
+func SetupSpannerTable(t *testing.T, ctx context.Context, adminClient *database.DatabaseAdminClient, dataClient *spanner.Client, create_statement, insert_statement, tableName, dbString string, params map[string]any) func(*testing.T) {
 
 	// Create table
 	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
