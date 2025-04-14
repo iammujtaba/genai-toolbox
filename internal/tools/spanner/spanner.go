@@ -138,12 +138,18 @@ func (t Tool) Invoke(params tools.ParamValues) ([]any, error) {
 			SQL:    t.Statement,
 			Params: mapParams,
 		}
-		var iter *RowIterator
-		switch t.isReadOnly 
-		case true:
-			iter := txn.Query(ctx, stmt)
-		case false:
-			iter := txn.Update(ctx, stmt)
+
+		if !t.isReadOnly {
+			rowsAffected, err := txn.Update(ctx, stmt)
+			if err != nil {
+				return fmt.Errorf("unable to update row row: %w", err)
+			}
+			messageString := fmt.Sprintf("$ %d rows are updated", rowsAffected)
+			out = []any{messageString}
+			return err
+		}
+
+		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 
 		for {
