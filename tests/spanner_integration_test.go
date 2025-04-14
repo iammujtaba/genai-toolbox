@@ -17,8 +17,12 @@
 package tests
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -27,6 +31,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	database "cloud.google.com/go/spanner/admin/database/apiv1"
+	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
 	"github.com/google/uuid"
 )
 
@@ -137,4 +142,158 @@ func TestSpannerToolEndpoints(t *testing.T) {
 
 	select_1_want := "[{\"\":\"1\"}]"
 	RunToolInvokeTest(t, select_1_want)
+}
+
+// TestSpannerWriteTransaction test Spanner Tool invocation with write statement
+func TestSpannerWriteStatement(t *testing.T) {
+	// Spanner needs an extra test for Tool invocation with write transactions
+	// Because it calls separate APIs with read/write Tool statements
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	var args []string
+
+	_, adminClient, err := initSpannerClients(ctx, SPANNER_PROJECT, SPANNER_INSTANCE, SPANNER_DATABASE)
+	if err != nil {
+		t.Fatalf("unable to create Spanner client: %s", err)
+	}
+
+	sourceConfig := getSpannerVars(t)
+	tableName := "test_write_table" + strings.Replace(uuid.New().String(), "-", "", -1)
+
+	// Write config into a file and pass it to command
+	toolStmt := fmt.Sprintf("INSERT INTO %s (Id, Name) VALUES (1, 'Alice');", tableName)
+	toolsFile := map[string]any{
+		"sources": map[string]any{
+			"my-instance": sourceConfig,
+		},
+		"tools": map[string]any{
+			"write-tool": map[string]any{
+				"kind":        SPANNER_TOOL_KIND,
+				"source":      "my-instance",
+				"description": "Simple tool to test end to end functionality.",
+				"statement":   toolStmt,
+			},
+		},
+	}
+
+	cmd, cleanup, err := StartCmd(ctx, toolsFile, args...)
+	if err != nil {
+		t.Fatalf("command initialization returned an error: %s", err)
+	}
+	defer cleanup()
+
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	out, err := cmd.WaitForString(waitCtx, regexp.MustCompile(`Server ready to serve`))
+	if err != nil {
+		t.Logf("toolbox command logs: \n%s", out)
+		t.Fatalf("toolbox didn't start successfully: %s", err)
+	}
+
+	// Create test table
+	dbString := fmt.Sprintf(
+		"projects/%s/instances/%s/databases/%s",
+		SPANNER_PROJECT,
+		SPANNER_INSTANCE,
+		SPANNER_DATABASE,
+	)
+
+	stmt := fmt.Sprintf("CREATE TABLE %s (Id INT64 NOT NULL, Name STRING(255) NOT NULL) PRIMARY KEY (Id)", tableName)
+
+	op, err := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+		Database:   dbString,
+		Statements: []string{stmt},
+	})
+	if err != nil {
+		t.Fatalf("unable to start create table operation %s: %s", tableName, err)
+	}
+	err = op.Wait(ctx)
+	if err != nil {
+		t.Fatalf("unable to create test table %s: %s", tableName, err)
+	}
+
+	// Tear down table after test complete
+	teardownTable := func(t *testing.T) {
+		// tear down test
+		op, err = adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+			Database:   dbString,
+			Statements: []string{fmt.Sprintf("DROP TABLE %s", tableName)},
+		})
+		if err != nil {
+			t.Errorf("unable to start drop table operation: %s", err)
+			return
+		}
+
+		err = op.Wait(ctx)
+		if err != nil {
+			t.Errorf("Teardown failed: %s", err)
+		}
+	}
+
+	defer teardownTable(t)
+
+	invokeTcs := []struct {
+		name          string
+		api           string
+		requestHeader map[string]string
+		requestBody   io.Reader
+		want          string
+		isErr         bool
+	}{
+		{
+			name:          "invoke my-simple-tool",
+			api:           "http://127.0.0.1:5000/api/tool/write-tool/invoke",
+			requestHeader: map[string]string{},
+			requestBody:   bytes.NewBuffer([]byte(`{}`)),
+			want:          "[1 row(s) updated]",
+			isErr:         false,
+		},
+	}
+	for _, tc := range invokeTcs {
+		t.Run(tc.name, func(t *testing.T) {
+
+			// Send Tool invocation request
+			req, err := http.NewRequest(http.MethodPost, tc.api, tc.requestBody)
+			if err != nil {
+				t.Fatalf("unable to create request: %s", err)
+			}
+			req.Header.Add("Content-type", "application/json")
+			for k, v := range tc.requestHeader {
+				req.Header.Add(k, v)
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("unable to send request: %s", err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				if tc.isErr == true {
+					return
+				}
+				bodyBytes, _ := io.ReadAll(resp.Body)
+				t.Fatalf("response status code is not 200, got %d: %s", resp.StatusCode, string(bodyBytes))
+			}
+
+			// Check response body
+			var body map[string]interface{}
+			err = json.NewDecoder(resp.Body).Decode(&body)
+			if err != nil {
+				t.Fatalf("error parsing response body")
+			}
+
+			got, ok := body["result"].(string)
+			if !ok {
+				t.Fatalf("unable to find result in response body")
+			}
+			// Remove `\` and `"` for string comparison
+			got = strings.ReplaceAll(got, "\\", "")
+			want := strings.ReplaceAll(tc.want, "\\", "")
+			got = strings.ReplaceAll(got, "\"", "")
+			want = strings.ReplaceAll(want, "\"", "")
+			if got != want {
+				t.Fatalf("unexpected value: got %q, want %q", got, tc.want)
+			}
+		})
+	}
 }

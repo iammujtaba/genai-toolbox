@@ -144,7 +144,7 @@ func (t Tool) Invoke(params tools.ParamValues) ([]any, error) {
 			if err != nil {
 				return fmt.Errorf("unable to update row row: %w", err)
 			}
-			messageString := fmt.Sprintf("$ %d rows are updated", rowsAffected)
+			messageString := fmt.Sprintf("%d row(s) updated", rowsAffected)
 			out = []any{messageString}
 			return err
 		}
@@ -194,8 +194,7 @@ func (t Tool) Authorized(verifiedAuthServices []string) bool {
 }
 
 // The following helper functions are copied and adopted from github.com/googleapis/go-sql-spanner/
-// The purpose is to determine the read/write transaction type of the
-var readKeywords = map[string]bool{"SELECT": true, "WITH": true, "GRAPH": true, "FROM": true}
+// The purpose is to determine the read/write transaction type
 var writeKeywords = map[string]bool{"INSERT": true, "UPDATE": true, "DELETE": true}
 var allKeywords = map[string]bool{"SELECT": true, "WITH": true, "GRAPH": true, "FROM": true, "INSERT": true, "UPDATE": true, "DELETE": true}
 
