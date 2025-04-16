@@ -327,6 +327,7 @@ func TestParseToolFile(t *testing.T) {
 						Parameters: []tools.Parameter{
 							tools.NewStringParameter("country", "some description"),
 						},
+						AuthRequired: []string{},
 					},
 				},
 				Toolsets: server.ToolsetConfigs{
