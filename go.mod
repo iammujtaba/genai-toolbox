@@ -20,6 +20,7 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/go-sql-driver/mysql v1.9.2
 	github.com/goccy/go-yaml v1.17.1
+	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.4
@@ -40,6 +41,7 @@ require (
 	google.golang.org/api v0.233.0
 	golang.org/x/oauth2 v0.29.0
 	google.golang.org/api v0.231.0
+	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.37.0
 )
@@ -138,6 +140,8 @@ require (
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250414145226-207652e42e2e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250425173222-7b384671a197 // indirect
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	modernc.org/libc v1.62.1 // indirect
