@@ -18,11 +18,13 @@
 package tests
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"testing"
 
 	"github.com/googleapis/genai-toolbox/internal/tools"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // GetToolsConfig returns a mock tools config file
@@ -218,84 +220,6 @@ func GetHTTPToolsConfig(sourceConfig map[string]any, toolKind string) map[string
 	return toolsFile
 }
 
-// GetValkeyRedisToolsConfig returns a mock tools config file
-func GetValkeyRedisToolsConfig(sourceConfig map[string]any, toolKind string, paramCmds, authCmds [][]string) map[string]any {
-	// Write config into a file and pass it to command
-	toolsFile := map[string]any{
-		"sources": map[string]any{
-			"my-instance": sourceConfig,
-		},
-		"authServices": map[string]any{
-			"my-google-auth": map[string]any{
-				"kind":     "google",
-				"clientId": ClientId,
-			},
-		},
-		"tools": map[string]any{
-			"my-simple-tool": map[string]any{
-				"kind":        toolKind,
-				"source":      "my-instance",
-				"description": "Simple tool to test end to end functionality.",
-				"statement":   "SELECT 1;",
-			},
-			"my-param-tool": map[string]any{
-				"kind":        toolKind,
-				"source":      "my-instance",
-				"description": "Tool to test invocation with params.",
-				"commands":    paramCmds,
-				"parameters": []any{
-					map[string]any{
-						"name":        "id",
-						"type":        "integer",
-						"description": "user ID",
-					},
-					map[string]any{
-						"name":        "name",
-						"type":        "string",
-						"description": "user name",
-					},
-				},
-			},
-			"my-auth-tool": map[string]any{
-				"kind":        toolKind,
-				"source":      "my-instance",
-				"description": "Tool to test authenticated parameters.",
-				"commands":    authCmds,
-				"parameters": []map[string]any{
-					{
-						"name":        "email",
-						"type":        "string",
-						"description": "user email",
-						"authServices": []map[string]string{
-							{
-								"name":  "my-google-auth",
-								"field": "email",
-							},
-						},
-					},
-				},
-			},
-			"my-auth-required-tool": map[string]any{
-				"kind":        toolKind,
-				"source":      "my-instance",
-				"description": "Tool to test auth required invocation.",
-				"statement":   "SELECT 1;",
-				"authRequired": []string{
-					"my-google-auth",
-				},
-			},
-			"my-fail-tool": map[string]any{
-				"kind":        toolKind,
-				"source":      "my-instance",
-				"description": "Tool to test statement with incorrect syntax.",
-				"statement":   "SELEC 1;",
-			},
-		},
-	}
-
-	return toolsFile
-}
-
 // GetPostgresSQLParamToolInfo returns statements and param for my-param-tool postgres-sql kind
 func GetPostgresSQLParamToolInfo(tableName string) (string, string, string, []any) {
 	create_statement := fmt.Sprintf("CREATE TABLE %s (id SERIAL PRIMARY KEY, name TEXT);", tableName)
@@ -376,4 +300,186 @@ func GetMysqlWants() (string, string) {
 	select1Want := "[{\"1\":1}]"
 	failInvocationWant := `{"jsonrpc":"2.0","id":"invoke-fail-tool","result":{"content":[{"type":"text","text":"unable to execute query: Error 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'SELEC 1' at line 1"}],"isError":true}}`
 	return select1Want, failInvocationWant
+}
+
+// SetupPostgresSQLTable creates and inserts data into a table of tool
+// compatible with postgres-sql tool
+func SetupPostgresSQLTable(t *testing.T, ctx context.Context, pool *pgxpool.Pool, create_statement, insert_statement, tableName string, params []any) func(*testing.T) {
+	err := pool.Ping(ctx)
+	if err != nil {
+		t.Fatalf("unable to connect to test database: %s", err)
+	}
+
+	// Create table
+	_, err = pool.Query(ctx, create_statement)
+	if err != nil {
+		t.Fatalf("unable to create test table %s: %s", tableName, err)
+	}
+
+	// Insert test data
+	_, err = pool.Query(ctx, insert_statement, params...)
+	if err != nil {
+		t.Fatalf("unable to insert test data: %s", err)
+	}
+
+	return func(t *testing.T) {
+		// tear down test
+		_, err = pool.Exec(ctx, fmt.Sprintf("DROP TABLE %s;", tableName))
+		if err != nil {
+			t.Errorf("Teardown failed: %s", err)
+		}
+	}
+}
+
+// SetupMsSQLTable creates and inserts data into a table of tool
+// compatible with mssql-sql tool
+func SetupMsSQLTable(t *testing.T, ctx context.Context, pool *sql.DB, create_statement, insert_statement, tableName string, params []any) func(*testing.T) {
+	err := pool.PingContext(ctx)
+	if err != nil {
+		t.Fatalf("unable to connect to test database: %s", err)
+	}
+
+	// Create table
+	_, err = pool.QueryContext(ctx, create_statement)
+	if err != nil {
+		t.Fatalf("unable to create test table %s: %s", tableName, err)
+	}
+
+	// Insert test data
+	_, err = pool.QueryContext(ctx, insert_statement, params...)
+	if err != nil {
+		t.Fatalf("unable to insert test data: %s", err)
+	}
+
+	return func(t *testing.T) {
+		// tear down test
+		_, err = pool.ExecContext(ctx, fmt.Sprintf("DROP TABLE %s;", tableName))
+		if err != nil {
+			t.Errorf("Teardown failed: %s", err)
+		}
+	}
+}
+
+// SetupMySQLTable creates and inserts data into a table of tool
+// compatible with mssql-sql tool
+func SetupMySQLTable(t *testing.T, ctx context.Context, pool *sql.DB, create_statement, insert_statement, tableName string, params []any) func(*testing.T) {
+	err := pool.PingContext(ctx)
+	if err != nil {
+		t.Fatalf("unable to connect to test database: %s", err)
+	}
+
+	// Create table
+	_, err = pool.QueryContext(ctx, create_statement)
+	if err != nil {
+		t.Fatalf("unable to create test table %s: %s", tableName, err)
+	}
+
+	// Insert test data
+	_, err = pool.QueryContext(ctx, insert_statement, params...)
+	if err != nil {
+		t.Fatalf("unable to insert test data: %s", err)
+	}
+
+	return func(t *testing.T) {
+		// tear down test
+		_, err = pool.ExecContext(ctx, fmt.Sprintf("DROP TABLE %s;", tableName))
+		if err != nil {
+			t.Errorf("Teardown failed: %s", err)
+		}
+	}
+}
+
+// GetRedisWants return the expected wants for redis
+func GetRedisValkeyWants() (string, string, string, string, string) {
+	select1Want := "[\"PONG\"]"
+	failInvocationWant := `{"jsonrpc":"2.0","id":"invoke-fail-tool","result":{"content":[{"type":"text","text":"\"error from executing command at index 0: ERR unknown command 'SELEC 1;', with args beginning with:  command length: 1\""}]}}`
+	invokeParamWant := "[\"Alice\",\"Sid\"]"
+	invokeAuthWant := `["{\"name\":\"Alice\"}"]`
+	mcpInvokeParamWant := `{"jsonrpc":"2.0","id":"my-param-tool","result":{"content":[{"type":"text","text":"\"Alice\""},{"type":"text","text":"\"Sid\""}]}}`
+	return select1Want, failInvocationWant, invokeParamWant, invokeAuthWant, mcpInvokeParamWant
+}
+
+// GetPostgresSQLParamToolInfo returns statements and param for my-param-tool postgres-sql kind
+func GetRedisValkeyToolCmds() ([][]string, [][]string) {
+	paramCmd := [][]string{{"HGET", "row1", "name"}, {"HGET", "row3", "name"}}
+	authCmd := [][]string{{"HGET", "$email", "name"}}
+	return paramCmd, authCmd
+}
+
+func GetRedisValkeyToolsConfig(sourceConfig map[string]any, toolKind string, param_cmds, auth_cmds [][]string) map[string]any {
+	toolsFile := map[string]any{
+		"sources": map[string]any{
+			"my-instance": sourceConfig,
+		},
+		"authServices": map[string]any{
+			"my-google-auth": map[string]any{
+				"kind":     "google",
+				"clientId": ClientId,
+			},
+		},
+		"tools": map[string]any{
+			"my-simple-tool": map[string]any{
+				"kind":        toolKind,
+				"source":      "my-instance",
+				"description": "Simple tool to test end to end functionality.",
+				"commands":    [][]string{{"PING"}},
+			},
+			"my-param-tool": map[string]any{
+				"kind":        toolKind,
+				"source":      "my-instance",
+				"description": "Tool to test invocation with params.",
+				"commands":    param_cmds,
+				"parameters": []any{
+					map[string]any{
+						"name":        "id",
+						"type":        "integer",
+						"description": "user ID",
+					},
+					map[string]any{
+						"name":        "name",
+						"type":        "string",
+						"description": "user name",
+					},
+				},
+			},
+			"my-auth-tool": map[string]any{
+				"kind":        toolKind,
+				"source":      "my-instance",
+				"description": "Tool to test authenticated parameters.",
+				// statement to auto-fill authenticated parameter
+				"commands": auth_cmds,
+				"parameters": []map[string]any{
+					{
+						"name":        "email",
+						"type":        "string",
+						"description": "user email",
+						"authServices": []map[string]string{
+							{
+								"name":  "my-google-auth",
+								"field": "email",
+							},
+						},
+					},
+				},
+			},
+			"my-auth-required-tool": map[string]any{
+				"kind":        toolKind,
+				"source":      "my-instance",
+				"description": "Tool to test auth required invocation.",
+				"commands":    [][]string{{"PING"}},
+				"authRequired": []string{
+					"my-google-auth",
+				},
+			},
+			"my-fail-tool": map[string]any{
+				"kind":        toolKind,
+				"source":      "my-instance",
+				"description": "Tool to test statement with incorrect syntax.",
+				"commands":    [][]string{{"SELEC 1;"}},
+			},
+		},
+	}
+
+	return toolsFile
+
 }
