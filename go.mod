@@ -20,7 +20,6 @@ require (
 	github.com/go-playground/validator/v10 v10.26.0
 	github.com/go-sql-driver/mysql v1.9.2
 	github.com/goccy/go-yaml v1.17.1
-	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.4
@@ -28,7 +27,6 @@ require (
 	github.com/neo4j/neo4j-go-driver/v5 v5.28.0
 	github.com/redis/go-redis/v9 v9.8.0
 	github.com/spf13/cobra v1.9.1
-	github.com/valkey-io/valkey-go v1.0.59
 	go.opentelemetry.io/contrib/propagators/autoprop v0.60.0
 	go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.35.0
@@ -41,7 +39,6 @@ require (
 	google.golang.org/api v0.233.0
 	golang.org/x/oauth2 v0.29.0
 	google.golang.org/api v0.231.0
-	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.37.0
 )
