@@ -16,10 +16,25 @@ Memorystore for Redis instance. It's compatible with the following source:
 
 The specified Redis commands are executed sequentially. Each command is
 represented as a string list, where the first element is the command name (e.g., SET,
-GET, HGETALL) and subsequent elements are its arguments. Dynamic command
-arguments can be templated using [Go template][go-template-doc]'s annotations.
+GET, HGETALL) and subsequent elements are its arguments.
 
-[go-template-doc]: <https://pkg.go.dev/text/template#pkg-overview>
+### Dynamic Command Parameters
+
+Command arguments can be templated using the `$variableName` annotation. The
+array type parameters will be expanded once into multiple arguments. Take the
+following config for example:
+
+```yaml
+  commands:
+      - [SADD, userNames, $userNames] # Array will be flattened into multiple arguments.
+  parameters:
+    - name: userNames
+      type: array
+      description: The user names to be set.  
+```
+
+If the input is an array of strings `["Alice", "Sid", "Bob"]`,  The final command
+to be executed after argument expansion will be `[SADD, userNames, Alice, Sid, Bob]`.
 
 ## Example
 
@@ -32,13 +47,13 @@ tools:
       Use this tool to interact with user data stored in Redis.
       It can set, retrieve, and delete user-specific information.
     commands:
-      - [SET, user:{{.userId}}:name, {{.userName}}]
-      - [GET, user:{{.userId}}:email]
+      - [SADD, userNames, $userNames] # Array will be flattened into multiple arguments.
+      - [GET, $userId]
     parameters:
       - name: userId
         type: string
         description: The unique identifier for the user.
-      - name: userName
-        type: string
-        description: The name of the user to set.
+      - name: userNames
+        type: array
+        description: The user names to be set.  
 ```
