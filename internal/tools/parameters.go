@@ -15,10 +15,12 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/googleapis/genai-toolbox/internal/util"
 )
@@ -117,7 +119,9 @@ func parseFromAuthService(paramAuthServices []ParamAuthService, claimsMap map[st
 
 // ParseParams is a helper function for parsing Parameters from an arbitraryJSON object.
 func ParseParams(ps Parameters, data map[string]any, claimsMap map[string]map[string]any) (ParamValues, error) {
+
 	params := make([]ParamValue, 0, len(ps))
+
 	for _, p := range ps {
 		var v any
 		paramAuthServices := p.GetAuthServices()
@@ -144,6 +148,58 @@ func ParseParams(ps Parameters, data map[string]any, claimsMap map[string]map[st
 		params = append(params, ParamValue{Name: name, Value: newV})
 	}
 	return params, nil
+}
+
+// TODO: is it ok that this only works if user entered array of strings ["id", "name"] in yaml
+func convertArrayParamToString(param any) (string, error) {
+	switch v := param.(type) {
+	case []any:
+		var stringValues []string
+		for _, item := range v {
+			stringVal := fmt.Sprint(item)
+			stringValues = append(stringValues, stringVal)
+		}
+		return strings.Join(stringValues, ", "), nil
+	default:
+		return "", fmt.Errorf("invalid parameter type, expected array of type any")
+	}
+}
+
+func ExtractTemplateParams(templateParams Parameters, originalStatement string, params ParamValues) (ParamValues, string, error) {
+	paramsMap := params.AsMap()
+	templateParamsMap := make(map[string]any)
+	for _, p := range templateParams {
+		k := p.GetName()
+		v, ok := paramsMap[k]
+		if !ok {
+			return params, "", fmt.Errorf("error extracting template parameter %s", k)
+		}
+		templateParamsMap[k] = v
+	}
+
+	funcMap := template.FuncMap{
+		"array": convertArrayParamToString,
+	}
+	t, tError := template.New("stTemplate").Funcs(funcMap).Parse(originalStatement)
+	if tError != nil {
+		return params, "", fmt.Errorf("error creating go template %s", tError)
+	}
+
+	var result bytes.Buffer
+	err := t.Execute(&result, templateParamsMap)
+	if err != nil {
+		return params, "", fmt.Errorf("error executing go template %s", err)
+	}
+
+	leftoverParams := make(ParamValues, 0)
+	for _, p := range params {
+		if _, usedParameter := templateParamsMap[p.Name]; !usedParameter {
+			leftoverParams = append(leftoverParams, p)
+		}
+	}
+
+	modifiedStatement := result.String()
+	return leftoverParams, modifiedStatement, nil
 }
 
 type Parameter interface {
