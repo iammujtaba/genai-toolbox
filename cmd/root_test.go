@@ -307,7 +307,7 @@ func TestParseToolFile(t *testing.T) {
 				Sources: server.SourceConfigs{
 					"my-pg-instance": cloudsqlpgsrc.Config{
 						Name:     "my-pg-instance",
-						Kind:     cloudsqlpgsrc.SourceKind,
+						Kind:     cloudsqlpgsrc.Kind,
 						Project:  "my-project",
 						Region:   "my-region",
 						Instance: "my-instance",
@@ -426,7 +426,7 @@ func TestParseToolFileWithAuth(t *testing.T) {
 				Sources: server.SourceConfigs{
 					"my-pg-instance": cloudsqlpgsrc.Config{
 						Name:     "my-pg-instance",
-						Kind:     cloudsqlpgsrc.SourceKind,
+						Kind:     cloudsqlpgsrc.Kind,
 						Project:  "my-project",
 						Region:   "my-region",
 						Instance: "my-instance",
@@ -525,7 +525,7 @@ func TestParseToolFileWithAuth(t *testing.T) {
 				Sources: server.SourceConfigs{
 					"my-pg-instance": cloudsqlpgsrc.Config{
 						Name:     "my-pg-instance",
-						Kind:     cloudsqlpgsrc.SourceKind,
+						Kind:     cloudsqlpgsrc.Kind,
 						Project:  "my-project",
 						Region:   "my-region",
 						Instance: "my-instance",
@@ -626,7 +626,7 @@ func TestParseToolFileWithAuth(t *testing.T) {
 				Sources: server.SourceConfigs{
 					"my-pg-instance": cloudsqlpgsrc.Config{
 						Name:     "my-pg-instance",
-						Kind:     cloudsqlpgsrc.SourceKind,
+						Kind:     cloudsqlpgsrc.Kind,
 						Project:  "my-project",
 						Region:   "my-region",
 						Instance: "my-instance",
@@ -782,7 +782,7 @@ func TestEnvVarReplacement(t *testing.T) {
 				Sources: server.SourceConfigs{
 					"my-http-instance": httpsrc.Config{
 						Name:           "my-http-instance",
-						Kind:           httpsrc.SourceKind,
+						Kind:           httpsrc.Kind,
 						BaseURL:        "http://test_server/",
 						Timeout:        "10s",
 						DefaultHeaders: map[string]string{"Authorization": "ACTUAL_HEADER"},
