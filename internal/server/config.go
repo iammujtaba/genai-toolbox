@@ -31,11 +31,11 @@ import (
 	couchbasesrc "github.com/googleapis/genai-toolbox/internal/sources/couchbase"
 	dgraphsrc "github.com/googleapis/genai-toolbox/internal/sources/dgraph"
 	httpsrc "github.com/googleapis/genai-toolbox/internal/sources/http"
-	memorystoreredissrc "github.com/googleapis/genai-toolbox/internal/sources/memorystoreredis"
 	mssqlsrc "github.com/googleapis/genai-toolbox/internal/sources/mssql"
 	mysqlsrc "github.com/googleapis/genai-toolbox/internal/sources/mysql"
 	neo4jsrc "github.com/googleapis/genai-toolbox/internal/sources/neo4j"
 	postgressrc "github.com/googleapis/genai-toolbox/internal/sources/postgres"
+	redissrc "github.com/googleapis/genai-toolbox/internal/sources/redis"
 	spannersrc "github.com/googleapis/genai-toolbox/internal/sources/spanner"
 	sqlitesrc "github.com/googleapis/genai-toolbox/internal/sources/sqlite"
 	"github.com/googleapis/genai-toolbox/internal/tools"
@@ -256,8 +256,8 @@ func (c *SourceConfigs) UnmarshalYAML(ctx context.Context, unmarshal func(interf
 				return fmt.Errorf("unable to parse as %q: %w", kind, err)
 			}
 			(*c)[name] = actual
-		case memorystoreredissrc.SourceKind:
-			actual := memorystoreredissrc.Config{Name: name}
+		case redissrc.SourceKind:
+			actual := redissrc.Config{Name: name}
 			if err := dec.DecodeContext(ctx, &actual); err != nil {
 				return fmt.Errorf("unable to parse as %q: %w", kind, err)
 			}
