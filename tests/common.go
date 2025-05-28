@@ -146,11 +146,11 @@ func AddTemplateParamConfig(t *testing.T, config map[string]any) map[string]any 
 		"kind":        "postgres-sql",
 		"source":      "my-instance",
 		"description": "Insert tool with template parameters",
-		"statement":   "INSERT INTO {{.tableName}} ({{array .columns}}) VALUES ({{array .values}})",
+		"statement":   "INSERT INTO {{.tableName}} ({{array .columns}}) VALUES ({{.values}})",
 		"templateParameters": []tools.Parameter{
 			tools.NewStringParameter("tableName", "some description"),
 			tools.NewArrayParameter("columns", "The columns to insert into", tools.NewStringParameter("column", "A column name that will be returned from the query.")),
-			tools.NewArrayParameter("values", "The values to insert", tools.NewStringParameter("value", "A value that will be inserted into the table.")),
+			tools.NewStringParameter("values", "The values to insert as a comma separated string"),
 		},
 	}
 	toolsMap["select-templateParams-tool"] = map[string]any{

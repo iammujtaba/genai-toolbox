@@ -119,9 +119,7 @@ func parseFromAuthService(paramAuthServices []ParamAuthService, claimsMap map[st
 
 // ParseParams is a helper function for parsing Parameters from an arbitraryJSON object.
 func ParseParams(ps Parameters, data map[string]any, claimsMap map[string]map[string]any) (ParamValues, error) {
-
 	params := make([]ParamValue, 0, len(ps))
-
 	for _, p := range ps {
 		var v any
 		paramAuthServices := p.GetAuthServices()
@@ -150,56 +148,60 @@ func ParseParams(ps Parameters, data map[string]any, claimsMap map[string]map[st
 	return params, nil
 }
 
-// TODO: is it ok that this only works if user entered array of strings ["id", "name"] in yaml
-func convertArrayParamToString(param any) (string, error) {
+// helper function to convert a string array parameter to a comma separated string
+func ConvertArrayParamToString(param any) (string, error) {
 	switch v := param.(type) {
 	case []any:
 		var stringValues []string
 		for _, item := range v {
-			stringVal := fmt.Sprint(item)
+			stringVal, ok := item.(string)
+			if !ok {
+				return "", fmt.Errorf("templateParameter only supports string arrays")
+			}
 			stringValues = append(stringValues, stringVal)
 		}
 		return strings.Join(stringValues, ", "), nil
 	default:
-		return "", fmt.Errorf("invalid parameter type, expected array of type any")
+		return "", fmt.Errorf("invalid parameter type, expected array of type string")
 	}
 }
 
-func ExtractTemplateParams(templateParams Parameters, originalStatement string, params ParamValues) (ParamValues, string, error) {
-	paramsMap := params.AsMap()
-	templateParamsMap := make(map[string]any)
-	for _, p := range templateParams {
+// GetParams return the ParamValues that are associated with the Parameters.
+func GetParams(params Parameters, paramValuesMap map[string]any) (ParamValues, error) {
+	resultParamValues := make(ParamValues, 0)
+	for _, p := range params {
 		k := p.GetName()
-		v, ok := paramsMap[k]
+		v, ok := paramValuesMap[k]
 		if !ok {
-			return params, "", fmt.Errorf("error extracting template parameter %s", k)
+			return nil, fmt.Errorf("missing parameter %s", k)
 		}
-		templateParamsMap[k] = v
+		resultParamValues = append(resultParamValues, ParamValue{Name: k, Value: v})
+	}
+	return resultParamValues, nil
+}
+
+func ResolveTemplateParams(templateParams Parameters, originalStatement string, paramsMap map[string]any) (string, error) {
+	templateParamsValues, err := GetParams(templateParams, paramsMap)
+	templateParamsMap := templateParamsValues.AsMap()
+	if err != nil {
+		return "", fmt.Errorf("error getting template params %s", err)
 	}
 
 	funcMap := template.FuncMap{
-		"array": convertArrayParamToString,
+		"array": ConvertArrayParamToString,
 	}
-	t, tError := template.New("stTemplate").Funcs(funcMap).Parse(originalStatement)
-	if tError != nil {
-		return params, "", fmt.Errorf("error creating go template %s", tError)
-	}
-
-	var result bytes.Buffer
-	err := t.Execute(&result, templateParamsMap)
+	t, err := template.New("statement").Funcs(funcMap).Parse(originalStatement)
 	if err != nil {
-		return params, "", fmt.Errorf("error executing go template %s", err)
+		return "", fmt.Errorf("error creating go template %s", err)
 	}
-
-	leftoverParams := make(ParamValues, 0)
-	for _, p := range params {
-		if _, usedParameter := templateParamsMap[p.Name]; !usedParameter {
-			leftoverParams = append(leftoverParams, p)
-		}
+	var result bytes.Buffer
+	err = t.Execute(&result, templateParamsMap)
+	if err != nil {
+		return "", fmt.Errorf("error executing go template %s", err)
 	}
 
 	modifiedStatement := result.String()
-	return leftoverParams, modifiedStatement, nil
+	return modifiedStatement, nil
 }
 
 type Parameter interface {

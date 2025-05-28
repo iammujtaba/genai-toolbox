@@ -149,14 +149,17 @@ type Tool struct {
 }
 
 func (t Tool) Invoke(ctx context.Context, params tools.ParamValues) ([]any, error) {
-
-	newParams, newStatement, err := tools.ExtractTemplateParams(t.TemplateParameters, t.Statement, params)
+	paramsMap := params.AsMap()
+	newStatement, err := tools.ResolveTemplateParams(t.TemplateParameters, t.Statement, paramsMap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract template params %w", err)
 	}
 
+	newParams, err := tools.GetParams(t.Parameters, paramsMap)
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract standard params %w", err)
+	}
 	sliceParams := newParams.AsSlice()
-
 	results, err := t.Pool.Query(ctx, newStatement, sliceParams...)
 	if err != nil {
 		return nil, fmt.Errorf("unable to execute query: %w", err)
