@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/googleapis/genai-toolbox/compare/v0.6.0...v0.6.1) (2025-06-02)
+
+
+### Bug Fixes
+
+* **server/stdio:** Notifications should not return a response ([#638](https://github.com/googleapis/genai-toolbox/issues/638)) ([69d047a](https://github.com/googleapis/genai-toolbox/commit/69d047af46f1ec00f236db8a978a7a7627217fd2))
+
 ## [0.6.0](https://github.com/googleapis/genai-toolbox/compare/v0.5.0...v0.6.0) (2025-05-28)
 
 
