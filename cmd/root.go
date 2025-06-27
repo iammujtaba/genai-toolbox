@@ -33,7 +33,6 @@ import (
 	"github.com/googleapis/genai-toolbox/internal/prebuiltconfigs"
 	"github.com/googleapis/genai-toolbox/internal/server"
 	"github.com/googleapis/genai-toolbox/internal/telemetry"
-	"github.com/googleapis/genai-toolbox/internal/tools"
 	"github.com/googleapis/genai-toolbox/internal/util"
 
 	// Import tool packages for side effect of registration
@@ -277,28 +276,10 @@ func mergeToolsFiles(files ...ToolsFile) (ToolsFile, error) {
 			}
 		}
 
-		// Merge toolsets (combine tools from toolsets with same name)
+		// Check for conflicts and merge toolsets
 		for name, toolset := range file.Toolsets {
-			if existing, exists := merged.Toolsets[name]; exists {
-				// Combine tool names from both toolsets, avoiding duplicates
-				toolNames := make(map[string]bool)
-				for _, toolName := range existing.ToolNames {
-					toolNames[toolName] = true
-				}
-				for _, toolName := range toolset.ToolNames {
-					toolNames[toolName] = true
-				}
-				
-				// Convert map back to slice
-				var combinedTools []string
-				for toolName := range toolNames {
-					combinedTools = append(combinedTools, toolName)
-				}
-				
-				merged.Toolsets[name] = tools.ToolsetConfig{
-					Name:      name,
-					ToolNames: combinedTools,
-				}
+			if _, exists := merged.Toolsets[name]; exists {
+				conflicts = append(conflicts, fmt.Sprintf("toolset '%s' (file #%d)", name, fileIndex+1))
 			} else {
 				merged.Toolsets[name] = toolset
 			}
@@ -307,7 +288,7 @@ func mergeToolsFiles(files ...ToolsFile) (ToolsFile, error) {
 
 	// If conflicts were detected, return an error
 	if len(conflicts) > 0 {
-		return ToolsFile{}, fmt.Errorf("resource conflicts detected:\n  - %s\n\nPlease ensure each source, authService, and tool has a unique name across all files.\nToolsets with the same name will be merged automatically.", strings.Join(conflicts, "\n  - "))
+		return ToolsFile{}, fmt.Errorf("resource conflicts detected:\n  - %s\n\nPlease ensure each source, authService, tool, and toolset has a unique name across all files.", strings.Join(conflicts, "\n  - "))
 	}
 
 	return merged, nil
