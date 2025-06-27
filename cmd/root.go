@@ -228,9 +228,9 @@ func parseToolsFile(ctx context.Context, raw []byte) (ToolsFile, error) {
 }
 
 // mergeToolsFiles merges multiple ToolsFile structs into one.
-// Later files override earlier files for sources, authServices, and tools with the same name.
+// Detects and raises errors for resource conflicts in sources, authServices, and tools.
 // Toolsets are merged by combining all tools from toolsets with the same name.
-func mergeToolsFiles(files ...ToolsFile) ToolsFile {
+func mergeToolsFiles(files ...ToolsFile) (ToolsFile, error) {
 	merged := ToolsFile{
 		Sources:      make(server.SourceConfigs),
 		AuthServices: make(server.AuthServiceConfigs),
@@ -238,25 +238,43 @@ func mergeToolsFiles(files ...ToolsFile) ToolsFile {
 		Toolsets:     make(server.ToolsetConfigs),
 	}
 
-	for _, file := range files {
-		// Merge sources (later files override)
+	var conflicts []string
+
+	for fileIndex, file := range files {
+		// Check for conflicts and merge sources
 		for name, source := range file.Sources {
-			merged.Sources[name] = source
+			if _, exists := merged.Sources[name]; exists {
+				conflicts = append(conflicts, fmt.Sprintf("source '%s' (file #%d)", name, fileIndex+1))
+			} else {
+				merged.Sources[name] = source
+			}
 		}
 
-		// Merge authSources (deprecated, but still support)
+		// Check for conflicts and merge authSources (deprecated, but still support)
 		for name, authSource := range file.AuthSources {
-			merged.AuthSources[name] = authSource
+			if _, exists := merged.AuthSources[name]; exists {
+				conflicts = append(conflicts, fmt.Sprintf("authSource '%s' (file #%d)", name, fileIndex+1))
+			} else {
+				merged.AuthSources[name] = authSource
+			}
 		}
 
-		// Merge authServices (later files override)
+		// Check for conflicts and merge authServices
 		for name, authService := range file.AuthServices {
-			merged.AuthServices[name] = authService
+			if _, exists := merged.AuthServices[name]; exists {
+				conflicts = append(conflicts, fmt.Sprintf("authService '%s' (file #%d)", name, fileIndex+1))
+			} else {
+				merged.AuthServices[name] = authService
+			}
 		}
 
-		// Merge tools (later files override)
+		// Check for conflicts and merge tools
 		for name, tool := range file.Tools {
-			merged.Tools[name] = tool
+			if _, exists := merged.Tools[name]; exists {
+				conflicts = append(conflicts, fmt.Sprintf("tool '%s' (file #%d)", name, fileIndex+1))
+			} else {
+				merged.Tools[name] = tool
+			}
 		}
 
 		// Merge toolsets (combine tools from toolsets with same name)
@@ -287,7 +305,12 @@ func mergeToolsFiles(files ...ToolsFile) ToolsFile {
 		}
 	}
 
-	return merged
+	// If conflicts were detected, return an error
+	if len(conflicts) > 0 {
+		return ToolsFile{}, fmt.Errorf("resource conflicts detected:\n  - %s\n\nPlease ensure each source, authService, and tool has a unique name across all files.\nToolsets with the same name will be merged automatically.", strings.Join(conflicts, "\n  - "))
+	}
+
+	return merged, nil
 }
 
 // loadAndMergeToolsFiles loads multiple YAML files and merges them
@@ -308,7 +331,12 @@ func loadAndMergeToolsFiles(ctx context.Context, filePaths []string) (ToolsFile,
 		toolsFiles = append(toolsFiles, toolsFile)
 	}
 
-	return mergeToolsFiles(toolsFiles...), nil
+	mergedFile, err := mergeToolsFiles(toolsFiles...)
+	if err != nil {
+		return ToolsFile{}, fmt.Errorf("unable to merge tools files: %w", err)
+	}
+
+	return mergedFile, nil
 }
 
 // loadAndMergeToolsFolder loads all YAML files from a directory and merges them
