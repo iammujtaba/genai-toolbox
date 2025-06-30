@@ -227,8 +227,8 @@ func parseToolsFile(ctx context.Context, raw []byte) (ToolsFile, error) {
 }
 
 // mergeToolsFiles merges multiple ToolsFile structs into one.
-// Detects and raises errors for resource conflicts in sources, authServices, and tools.
-// Toolsets are merged by combining all tools from toolsets with the same name.
+// Detects and raises errors for resource conflicts in sources, authServices, tools, and toolsets.
+// All resource names (sources, authServices, tools, toolsets) must be unique across all files.
 func mergeToolsFiles(files ...ToolsFile) (ToolsFile, error) {
 	merged := ToolsFile{
 		Sources:      make(server.SourceConfigs),
@@ -288,7 +288,7 @@ func mergeToolsFiles(files ...ToolsFile) (ToolsFile, error) {
 
 	// If conflicts were detected, return an error
 	if len(conflicts) > 0 {
-		return ToolsFile{}, fmt.Errorf("resource conflicts detected:\n  - %s\n\nPlease ensure each source, authService, tool, and toolset has a unique name across all files.", strings.Join(conflicts, "\n  - "))
+		return ToolsFile{}, fmt.Errorf("resource conflicts detected:\n  - %s\n\nPlease ensure each source, authService, tool, and toolset has a unique name across all files", strings.Join(conflicts, "\n  - "))
 	}
 
 	return merged, nil
