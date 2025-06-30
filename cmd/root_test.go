@@ -229,6 +229,71 @@ func TestToolFileFlag(t *testing.T) {
 	}
 }
 
+func TestToolsFilesFlag(t *testing.T) {
+	tcs := []struct {
+		desc string
+		args []string
+		want []string
+	}{
+		{
+			desc: "no value",
+			args: []string{},
+			want: []string{},
+		},
+		{
+			desc: "single file",
+			args: []string{"--tools-files", "foo.yaml"},
+			want: []string{"foo.yaml"},
+		},
+		{
+			desc: "multiple files",
+			args: []string{"--tools-files", "foo.yaml,bar.yaml"},
+			want: []string{"foo.yaml", "bar.yaml"},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			c, _, err := invokeCommand(tc.args)
+			if err != nil {
+				t.Fatalf("unexpected error invoking command: %s", err)
+			}
+			if diff := cmp.Diff(c.tools_files, tc.want); diff != "" {
+				t.Fatalf("got %v, want %v", c.tools_files, tc.want)
+			}
+		})
+	}
+}
+
+func TestToolsFolderFlag(t *testing.T) {
+	tcs := []struct {
+		desc string
+		args []string
+		want string
+	}{
+		{
+			desc: "no value",
+			args: []string{},
+			want: "",
+		},
+		{
+			desc: "folder set",
+			args: []string{"--tools-folder", "test-folder"},
+			want: "test-folder",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			c, _, err := invokeCommand(tc.args)
+			if err != nil {
+				t.Fatalf("unexpected error invoking command: %s", err)
+			}
+			if c.tools_folder != tc.want {
+				t.Fatalf("got %v, want %v", c.tools_folder, tc.want)
+			}
+		})
+	}
+}
+
 func TestPrebuiltFlag(t *testing.T) {
 	tcs := []struct {
 		desc string
